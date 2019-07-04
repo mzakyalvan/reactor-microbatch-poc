@@ -40,6 +40,8 @@ class MicroBatchedOrderHistoryLoader implements OrderHistoryLoader, Initializing
   @NotNull
   private Duration windowTimeout = Duration.ofMillis(1000);
 
+  private Integer inquiryConcurrency = 10;
+
   private Disposable processDisposable;
 
   public MicroBatchedOrderHistoryLoader(OrderInquiryTransformer inquiryTransformer) {
@@ -49,7 +51,9 @@ class MicroBatchedOrderHistoryLoader implements OrderHistoryLoader, Initializing
     this.inquirySink = findProcessor.sink(OverflowStrategy.ERROR);
     this.processStream = findProcessor
         .windowTimeout(windowSize, windowTimeout)
-        .flatMap(identityStream -> inquiryTransformer.processInquiry(identityStream).subscribeOn(Schedulers.elastic()))
+        .flatMap(identityStream -> inquiryTransformer.processInquiry(identityStream).subscribeOn(Schedulers.elastic()),
+            inquiryConcurrency, inquiryConcurrency
+        )
         .publish().autoConnect(1);
   }
 
